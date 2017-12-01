@@ -7,6 +7,7 @@
 // thread(s) create cars and add them to qInProgress_cars deque
 // threads add wheels to cars in qInProgress_cars dequeue and put the cars back
 // in qInProgress_cars until there are 4, at which pint they go onto qFinished_cars
+// uncomment lock_guards and atomics for flawless operation 
 //============================================================================
 
 #include <iostream>
@@ -17,77 +18,68 @@
 #include <chrono>
 #include <time.h>
 #include <mutex>
-
+#include <atomic>
 using namespace std;
-
-bool bDoWork = true;
-const int CREATERS = 1;
-const int WHEELERS = 2;
-const int NUMB_CARS = 100;
-
-mutex m1;
-mutex m2;
 
 //a car 
 struct car{
 	int numb_wheels 	= 0;
 };
 
+//atomic<bool> bDoWork(true);
+bool bDoWork 		= true;
+const int CREATERS 	= 10;
+const int WHEELERS 	= 10;
+const int NUMB_CARS = 100;
+
 std::deque<car> qInProgress_cars;	//holds cars that do not have wheels
 std::deque<car> qFinished_cars;		//once cars have 4 wheels they go here
 
-int count1 =0;
-int count2 =0;
-bool bWork = true;
-
-void output(string s){
-	cout << s << endl;
-}
+mutex mInProgress;					//used to protect qInProgress_cars 
+mutex mFinished;					//used to protect qFinished_cars
 
 //creates cars
 void createcars(int i) {
-	while(i>0){
-		car aCar;
+	car aCar;
+	for(int j=0; j<i; j++){
+		//lock_guard<mutex> m(mInProgress);
 		qInProgress_cars.push_back(aCar);
-		i--;
 	}
-	bWork = false;
+	bDoWork = false;
 }
 
 //adds wheels to cars
 void addonewheel() {
 	while(true){ 
-		if (!qInProgress_cars.empty()){
-			//get the widget
-			car aCar = qInProgress_cars.front();
+		//lock_guard<mutex> m(mInProgress);
+		if (!qInProgress_cars.empty()){		
+			car aCar = qInProgress_cars.front();	//get the widget					
+			qInProgress_cars.pop_front();			//remove from deque
 			
-			//remove from queue
-			qInProgress_cars.pop_front();
-			
-			//lets see if we should add wheels
+			//need to add wheels?
 			if (aCar.numb_wheels < 4)	
 				aCar.numb_wheels++;	
 			
-			//if has 4 wheels then done otherwise add back to inprogress
-			//in any case it goes back to the end of the line 
-			if (aCar.numb_wheels==4)	
-				qFinished_cars.push_back(aCar);
+			//if has 4 wheels then move to back of qFinished_cars otherwise add to back of qInProgress_cars
+			if (aCar.numb_wheels==4){
+				//lock_guard<mutex> m(mFinished);
+				qFinished_cars.push_back(aCar);	
+			}			
 			else
 				qInProgress_cars.push_back(aCar);
 		}
 		
 		//leave if we are done working and finished putting wheels on
-		if (!bWork && qInProgress_cars.empty())
+		if (!bDoWork && qInProgress_cars.empty()){
 			break;
-			
+		}		
 	}
 }
 
 int main() {
 	//holds threads creating and working on cars
 	std::vector<thread> myThreads;	
-
-	cout << "Creating" <<CREATERS<<" createcars threads."<<"  And "<<WHEELERS<<" addonewheel threads"<< endl;
+	cout << "Creating " <<CREATERS<<" createcars threads."<<"  And "<<WHEELERS<<" addonewheel threads"<< endl;
 
 	//create creaters
 	for (int i = 0; i < CREATERS; ++i) {
@@ -105,11 +97,10 @@ int main() {
 	}
 	
 	//lets see what we have
-	cout << "number cars created:" <<NUMB_CARS<<" number cars finished:"<<qFinished_cars.size()<< endl;
+	cout << "number cars created:" <<NUMB_CARS*CREATERS<<" number cars finished:"<<qFinished_cars.size()<< endl;
 	
 	for(auto &car:qFinished_cars){
 		if (car.numb_wheels != 4)
 			cout<<"BAD CAR has "<<car.numb_wheels<<" wheels!"<<endl;	
-	}
-		
+	}		
 }

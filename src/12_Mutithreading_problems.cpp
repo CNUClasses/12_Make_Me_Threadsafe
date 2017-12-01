@@ -4,9 +4,9 @@
 // Version     :
 // Copyright   : Steal this code!
 // Description : 2 deques, 
-// thread(s) create cars and add them to qInProgress_cars deque
-// threads add wheels to cars in qInProgress_cars dequeue and put the cars back
-// in qInProgress_cars until there are 4, at which pint they go onto qFinished_cars
+// CREATERS thread(s) create cars and add them to qInProgress_cars deque
+// WHEELERS thread(s) add wheels to cars in qInProgress_cars dequeue and put the cars back
+// in qInProgress_cars until there are 4, at which pint they go into qFinished_cars
 // uncomment lock_guards and atomics for flawless operation 
 //============================================================================
 
@@ -81,12 +81,10 @@ int main() {
 	std::vector<thread> myThreads;	
 	cout << "Creating " <<CREATERS<<" createcars threads."<<"  And "<<WHEELERS<<" addonewheel threads"<< endl;
 
-	//create creaters
+	//create creaters and wheel people
 	for (int i = 0; i < CREATERS; ++i) {
 		myThreads.push_back(std::thread(createcars,NUMB_CARS));
 	}
-	
-	//create wheel people
 	for (int i = 0; i < WHEELERS; ++i) {
 		myThreads.push_back(std::thread(addonewheel));
 	}
